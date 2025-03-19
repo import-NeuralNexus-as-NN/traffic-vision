@@ -1,16 +1,13 @@
 import cv2
 from ultralytics import YOLO
 import logging
-import customtkinter as ctk
 from tkinter import filedialog
 import threading
+import gui
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
-# Настройки интерфейса
-ctk.set_appearance_mode("dark")  # Темная тема
-ctk.set_default_color_theme("blue")  # Синяя цветовая схема
 
 # Загрузка предобученной модели YOLOv8
 model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точная)
@@ -84,34 +81,5 @@ def start_processing(video_path, status_label):
         status_label.configure(text="Сначала выберите видео!", text_color="red")
 
 
-# Создание GUI
-app = ctk.CTk()
-app.title("YOLOv8 Video Detector")
-app.geometry("500x300")
-
-# Заголовок
-title_label = ctk.CTkLabel(app, text="Оценка транспортного потока на видео (YOLOv8)", font=("Arial", 18))
-title_label.pack(pady=20)
-
-# Кнопка выбора видео
-video_path = None  # Путь к видео
-
-
-def update_video_path():
-    global video_path
-    video_path = select_video(status_label)
-
-
-select_button = ctk.CTkButton(app, text="Выбрать видео", command=update_video_path)
-select_button.pack(pady=10)
-
-# Кнопка запуска обработки
-start_button = ctk.CTkButton(app, text="Запустить обработку", command=lambda: start_processing(video_path, status_label))
-start_button.pack(pady=10)
-
-# Статус
-status_label = ctk.CTkLabel(app, text="Для начала выберите видео", text_color="gray")
-status_label.pack(pady=20)
-
-# Запуск GUI
-app.mainloop()
+if __name__ == "__main__":
+    gui.app.mainloop()  # Запуск интерфейса
