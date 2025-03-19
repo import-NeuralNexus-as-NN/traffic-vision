@@ -1,11 +1,16 @@
 import cv2
 from ultralytics import YOLO
 import logging
-import tkinter as tk
+import customtkinter as ctk
 from tkinter import filedialog
+import threading
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
+
+# Настройки интерфейса
+ctk.set_appearance_mode("dark")  # Темная тема
+ctk.set_default_color_theme("blue")  # Синяя цветовая схема
 
 # Загрузка предобученной модели YOLOv8
 model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точная)
@@ -14,13 +19,20 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 allowed_classes = {2, 3, 5, 7}  # car, bus, truck, motorcycle
 
 
-def process_video(video_path):
+def process_video(video_path, status_label):
+
+    if not video_path:
+        status_label.configure(text="Сначала выберите видео!", text_color="red")
+        return
+
     # Открытие видеопотока
-    cap = cv2.VideoCapture("source/1952-152220070_small.mp4")  # Укажите путь к вашему видео
+    cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():
-        print("Ошибка: не удалось открыть видео")
+        status_label.configure(text="Ошибка: не удалось открыть видео!", text_color="red")
         return
+
+    status_label.configure(text="Обработка видео...", text_color="yellow")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -52,15 +64,54 @@ def process_video(video_path):
 
     cap.release()
     cv2.destroyAllWindows()
+    status_label.configure(text="Готово!", text_color="green")
 
 
-def select_video():
-    file_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4;*.avi;*.mov")])
+def select_video(status_label):
+    file_path = filedialog.askopenfilename(filetypes=[("Видеофайлы", "*.mp4;*.avi;*.mov")])
     if file_path:
-        process_video(file_path)
+        status_label.configure(text=f"Выбрано: {file_path.split('/')[-1]}", text_color="white")
+        return file_path
+    return None
 
 
-# Создание окна Tkinter
-root = tk.Tk()
-root.withdraw()  # Прячем основное окно
-select_video()  # Запускаем выбор файла
+def start_processing(video_path, status_label):
+    # Запуск обработки видео в отдельном потоке, чтобы не зависал GUI
+    if video_path:
+        thread = threading.Thread(target=process_video, args=(video_path, status_label))
+        thread.start()
+    else:
+        status_label.configure(text="Сначала выберите видео!", text_color="red")
+
+
+# Создание GUI
+app = ctk.CTk()
+app.title("YOLOv8 Video Detector")
+app.geometry("500x300")
+
+# Заголовок
+title_label = ctk.CTkLabel(app, text="Оценка транспортного потока на видео (YOLOv8)", font=("Arial", 18))
+title_label.pack(pady=20)
+
+# Кнопка выбора видео
+video_path = None  # Путь к видео
+
+
+def update_video_path():
+    global video_path
+    video_path = select_video(status_label)
+
+
+select_button = ctk.CTkButton(app, text="Выбрать видео", command=update_video_path)
+select_button.pack(pady=10)
+
+# Кнопка запуска обработки
+start_button = ctk.CTkButton(app, text="Запустить обработку", command=lambda: start_processing(video_path, status_label))
+start_button.pack(pady=10)
+
+# Статус
+status_label = ctk.CTkLabel(app, text="Для начала выберите видео", text_color="gray")
+status_label.pack(pady=20)
+
+# Запуск GUI
+app.mainloop()
