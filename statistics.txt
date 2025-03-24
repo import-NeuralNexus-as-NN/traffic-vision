@@ -1,0 +1,4 @@
+Class 2: 651 vehicles
+Class 3: 0 vehicles
+Class 5: 0 vehicles
+Class 7: 27 vehicles
