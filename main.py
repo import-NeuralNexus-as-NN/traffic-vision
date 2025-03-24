@@ -5,16 +5,17 @@ from tkinter import filedialog
 import threading
 import gui
 import os
-print(cv2.getBuildInformation())
+import matplotlib.pyplot as plt
+
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
-
 
 # Загрузка предобученной модели YOLOv8
 model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точная)
 
 # Список классов, которые оставляем (по COCO ID)
 allowed_classes = {2, 3, 5, 7}  # car, bus, truck, motorcycle
+statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
 
 def process_video(video_path, status_label):
@@ -60,13 +61,14 @@ def process_video(video_path, status_label):
                 # Фильтрация только наземного транспорта
                 if class_id in allowed_classes:
                     label = f"{model.names[class_id]} {conf:.2f}"
+                    statistics[class_id] += 1  # Увеличиваем счетчик для соответствующего класса
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)  # Текст
 
-        out.write(frame)  # Записываем кадр в выходное видео
-
         # Отображаем видео с детекцией
         cv2.imshow('YOLOv8 Detection', frame)
+
+        out.write(frame)  # Записываем кадр в выходное видео
 
         # Нажатие "q" для выхода
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -75,7 +77,25 @@ def process_video(video_path, status_label):
     cap.release()
     out.release()
     cv2.destroyAllWindows()
+
+    # Сохранение статистики
+    save_statistics(statistics)
+
     status_label.configure(text=f"Готово!Видео сохранено: {output_path}", text_color="green")
+
+
+def save_statistics(statistics):
+    # Сохранение статистики в файл
+    with open("statistics.txt", "w") as file:
+        for class_id, count in statistics.items():
+            file.write(f"Class {class_id}: {count} vehicles\n")
+
+    # Визуализация статистики
+    plt.bar(statistics.keys(), statistics.values())
+    plt.xlabel("Vehicle Class")
+    plt.ylabel("Count")
+    plt.title("Vehicle Count by Class")
+    plt.show()
 
 
 def select_video(status_label):
