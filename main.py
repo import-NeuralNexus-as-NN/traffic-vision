@@ -4,7 +4,8 @@ import logging
 from tkinter import filedialog
 import threading
 import gui
-
+import os
+print(cv2.getBuildInformation())
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
@@ -31,6 +32,16 @@ def process_video(video_path, status_label):
 
     status_label.configure(text="Обработка видео...", text_color="yellow")
 
+    # Получаем параметры видео
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    # Определяем путь сохранения
+    output_path = os.path.splitext(video_path)[0] + "_processed.avi"
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -52,6 +63,8 @@ def process_video(video_path, status_label):
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)  # Текст
 
+        out.write(frame)  # Записываем кадр в выходное видео
+
         # Отображаем видео с детекцией
         cv2.imshow('YOLOv8 Detection', frame)
 
@@ -60,8 +73,9 @@ def process_video(video_path, status_label):
             break
 
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
-    status_label.configure(text="Готово!", text_color="green")
+    status_label.configure(text=f"Готово!Видео сохранено: {output_path}", text_color="green")
 
 
 def select_video(status_label):
