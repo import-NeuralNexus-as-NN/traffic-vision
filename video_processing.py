@@ -81,10 +81,11 @@ def process_video(video_path, status_label):
                 elif class_id == 5:  # Например, 5 - грузовики
                     total_speed_trucks.append(speed)
 
-                # Вывод скорости на видео
-                label = f"{model.names[class_id]} - {speed:.1f} px/sec"
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # Вывод скорости на видео снизу от bounding box
+                label = f"{speed:.1f} px/sec"
+                text_x = x1  # на той же горизонтальной оси, что и левая граница bounding box
+                text_y = y2 + 20  # 20 пикселей ниже нижней границы bounding box
+                cv2.putText(frame, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
                 # Фильтрация только наземного транспорта
                 if class_id in allowed_classes:
