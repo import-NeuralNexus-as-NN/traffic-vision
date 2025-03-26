@@ -19,6 +19,9 @@ statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь д�
 
 speed_data = {"cars": [], "trucks": [], "frames": []}
 
+# Порог уверенности
+confidence_threshold = 0.5  # Установите нужный порог
+
 
 def process_video(video_path, status_label):
     if not video_path:
@@ -65,6 +68,10 @@ def process_video(video_path, status_label):
                 conf = float(box.conf)  # Уверенность модели
                 x1, y1, x2, y2 = map(int, box.xyxy[0])  # Координаты bbox
                 x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
+
+                # Пропускаем детекции с низкой уверенностью
+                if conf < confidence_threshold:
+                    continue
 
                 speed = calculate_speed(class_id, x_center, y_center, fps)
 
