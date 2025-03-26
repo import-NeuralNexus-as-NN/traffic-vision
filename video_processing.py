@@ -3,6 +3,9 @@ from ultralytics import YOLO
 import logging
 import os
 from statistics import save_statistics
+import numpy as np
+from speed_tracker import calculate_speed
+
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
@@ -13,6 +16,8 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 # Список классов, которые оставляем (по COCO ID)
 allowed_classes = {2, 3, 5, 7}  # car, bus, truck, motorcycle
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
+
+speed_data = {"cars": [], "trucks": [], "frames": []}
 
 
 def process_video(video_path, status_label):
@@ -39,6 +44,9 @@ def process_video(video_path, status_label):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
+    # Переменные для графика
+    frame_count = 0
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -47,12 +55,29 @@ def process_video(video_path, status_label):
         # Получаем результаты детекции
         results = model(frame)
 
+        total_speed_cars = []
+        total_speed_trucks = []
+
         # Обрабатываем каждый найденный объект
         for result in results:
             for box in result.boxes:
                 class_id = int(box.cls)  # Класс объекта
                 conf = float(box.conf)  # Уверенность модели
                 x1, y1, x2, y2 = map(int, box.xyxy[0])  # Координаты bbox
+                x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
+
+                speed = calculate_speed(class_id, x_center, y_center, fps)
+
+                # Сохраняем данные для графика
+                if class_id == 2:  # Например, 2 - легковые авто
+                    total_speed_cars.append(speed)
+                elif class_id == 5:  # Например, 5 - грузовики
+                    total_speed_trucks.append(speed)
+
+                # Вывод скорости на видео
+                label = f"{model.names[class_id]} - {speed:.1f} px/sec"
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
                 # Фильтрация только наземного транспорта
                 if class_id in allowed_classes:
@@ -60,6 +85,14 @@ def process_video(video_path, status_label):
                     statistics[class_id] += 1  # Увеличиваем счетчик для соответствующего класса
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)  # Текст
+
+        # Средняя скорость для графика
+        avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0
+        avg_speed_trucks = np.mean(total_speed_trucks) if total_speed_trucks else 0
+        speed_data["cars"].append(avg_speed_cars)
+        speed_data["trucks"].append(avg_speed_trucks)
+        speed_data["frames"].append(frame_count)
+        frame_count += 1
 
         # Отображаем видео с детекцией
         cv2.imshow('YOLOv8 Detection', frame)
