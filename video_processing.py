@@ -5,7 +5,7 @@ import os
 from statistics import save_statistics
 import numpy as np
 from speed_tracker import calculate_speed
-
+from tracker import tracker
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
@@ -60,6 +60,7 @@ def process_video(video_path, status_label):
 
         total_speed_cars = []
         total_speed_trucks = []
+        detections = []
 
         # Обрабатываем каждый найденный объект
         for result in results:
@@ -67,13 +68,57 @@ def process_video(video_path, status_label):
                 class_id = int(box.cls)  # Класс объекта
                 conf = float(box.conf)  # Уверенность модели
                 x1, y1, x2, y2 = map(int, box.xyxy[0])  # Координаты bbox
-                x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
 
                 # Пропускаем детекции с низкой уверенностью
                 if conf < confidence_threshold:
                     continue
 
-                speed = calculate_speed(class_id, x_center, y_center, fps)
+                # Добавляем информацию о классе в детекцию
+                detections.append([x1, y1, x2, y2, conf, class_id])
+
+        # Передаем данные в трекер (проверим, что они в нужном формате)
+        if len(detections) > 0:
+            detections_array = np.array(detections)
+
+            # Обновляем трекер
+            tracks = tracker.update(detections_array, frame.shape[:2], frame.shape[:2])
+
+            # Создадим словарь для отслеживания классов и объектов
+            track_info = {}
+
+            for track in tracks:
+                # Получаем координаты трека
+                x1, y1, x2, y2 = map(int, track.tlbr)
+                track_id = track.track_id
+
+                # Найдем детекцию, которая соответствует треку
+                best_match = None
+                for detection in detections:
+                    detection_x1, detection_y1, detection_x2, detection_y2, _, detection_class_id = detection
+                    # Простое правило для нахождения соответствующей детекции:
+                    if detection_x1 <= x1 <= detection_x2 and detection_y1 <= y1 <= detection_y2:
+                        best_match = detection
+                        break
+
+                if best_match is not None:
+                    # Извлекаем class_id из детекции
+                    class_id = best_match[5]
+
+                    # Фильтрация по классу (например, только легковые автомобили и грузовики)
+                    if class_id not in allowed_classes:
+                        continue  # Пропускаем объект, если он не в списке разрешенных классов
+
+                    x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
+                    speed = calculate_speed(class_id, x_center, y_center, fps)
+
+                    # Прочие вычисления и отображение результатов
+                    # Подписываем ID трека
+                    label = f"ID {track_id} | {speed:.1f} px/sec"
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
+                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
+                                2)  # Текст
+                    # Добавим информацию о треке в словарь
+                    track_info[track_id] = {'class_id': class_id, 'speed': speed}
 
                 # Сохраняем данные для графика
                 if class_id == 2:  # Например, 2 - легковые авто
@@ -81,18 +126,11 @@ def process_video(video_path, status_label):
                 elif class_id == 5:  # Например, 5 - грузовики
                     total_speed_trucks.append(speed)
 
-                # Вывод скорости на видео снизу от bounding box
-                label = f"{speed:.1f} px/sec"
-                text_x = x1  # на той же горизонтальной оси, что и левая граница bounding box
-                text_y = y2 + 20  # 20 пикселей ниже нижней границы bounding box
-                cv2.putText(frame, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # Добавим информацию о треке в словарь
+                track_info[track_id] = {'class_id': class_id, 'speed': speed}
 
-                # Фильтрация только наземного транспорта
-                if class_id in allowed_classes:
-                    label = f"{model.names[class_id]} {conf:.2f}"
-                    statistics[class_id] += 1  # Увеличиваем счетчик для соответствующего класса
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
-                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)  # Текст
+                statistics.setdefault(class_id, 0)
+                statistics[class_id] += 1
 
         # Средняя скорость для графика
         avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0
@@ -103,7 +141,7 @@ def process_video(video_path, status_label):
         frame_count += 1
 
         # Отображаем видео с детекцией
-        cv2.imshow('YOLOv8 Detection', frame)
+        cv2.imshow('YOLOv8 + ByteTrack', frame)
 
         out.write(frame)  # Записываем кадр в выходное видео
 
@@ -119,4 +157,3 @@ def process_video(video_path, status_label):
     save_statistics(statistics)
 
     status_label.configure(text=f"Готово!Видео сохранено: {output_path}", text_color="green")
-
