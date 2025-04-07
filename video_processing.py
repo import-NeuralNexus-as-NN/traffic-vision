@@ -14,7 +14,7 @@ logging.getLogger("ultralytics").setLevel(logging.ERROR)
 model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точная)
 
 # Список классов, которые оставляем (по COCO ID)
-allowed_classes = {2, 3, 5, 7}  # car, bus, truck, motorcycle
+allowed_classes = {2, 3, 5}  # car, bus, truck
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
 speed_data = {"cars": [], "trucks": [], "frames": []}
@@ -49,6 +49,11 @@ def process_video(video_path, status_label):
 
     # Переменные для графика
     frame_count = 0
+
+    # Множества для отслеживания уникальных объектов по track_id
+    unique_cars = set()
+    unique_buses = set()
+    unique_trucks = set()
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -120,17 +125,21 @@ def process_video(video_path, status_label):
                     # Добавим информацию о треке в словарь
                     track_info[track_id] = {'class_id': class_id, 'speed': speed}
 
-                # Сохраняем данные для графика
-                if class_id == 2:  # Например, 2 - легковые авто
-                    total_speed_cars.append(speed)
-                elif class_id == 5:  # Например, 5 - грузовики
-                    total_speed_trucks.append(speed)
+                # Обновляем множества уникальных объектов для каждого класса
+                if class_id == 2:  # car
+                    unique_cars.add(track_id)
+                elif class_id == 3:  # bus
+                    unique_buses.add(track_id)
+                elif class_id == 5:  # truck
+                    unique_trucks.add(track_id)
 
                 # Добавим информацию о треке в словарь
                 track_info[track_id] = {'class_id': class_id, 'speed': speed}
 
-                statistics.setdefault(class_id, 0)
-                statistics[class_id] += 1
+                # Обновление статистики после подсчета уникальных объектов
+                statistics[2] = len(unique_cars)  # количество уникальных легковых автомобилей
+                statistics[3] = len(unique_buses)  # количество уникальных автобусов
+                statistics[5] = len(unique_trucks)  # количество уникальных грузовиков
 
         # Средняя скорость для графика
         avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0

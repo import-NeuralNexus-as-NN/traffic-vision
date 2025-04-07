@@ -7,8 +7,7 @@ matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 class_names = {
     2: "Автомобиль",
     3: "Автобус",
-    5: "Грузовик",
-    7: "Мотоцикл"
+    5: "Грузовик"
 }
 
 
