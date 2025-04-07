@@ -4,7 +4,7 @@ import logging
 import os
 from statistics import save_statistics
 import numpy as np
-from speed_tracker import calculate_speed
+from speed_tracker import calculate_speed, SpeedSmoothing
 from tracker import tracker
 
 # Отключаем вывод логов
@@ -21,6 +21,8 @@ speed_data = {"cars": [], "trucks": [], "frames": []}
 
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
+
+speed_smoother = SpeedSmoothing(window_size=5)
 
 
 def process_video(video_path, status_label):
@@ -116,6 +118,9 @@ def process_video(video_path, status_label):
                     x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
                     speed = calculate_speed(class_id, x_center, y_center, fps)
 
+                    # Сглаживаем скорость
+                    smoothed_speed = speed_smoother.smooth(class_id, speed)
+
                     # Прочие вычисления и отображение результатов
                     # Подписываем ID трека
                     label = f"ID {track_id} | {speed:.1f} px/sec"
@@ -123,7 +128,7 @@ def process_video(video_path, status_label):
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                                 2)  # Текст
                     # Добавим информацию о треке в словарь
-                    track_info[track_id] = {'class_id': class_id, 'speed': speed}
+                    track_info[track_id] = {'class_id': class_id, 'speed': smoothed_speed}
 
                 # Обновляем множества уникальных объектов для каждого класса
                 if class_id == 2:  # car
