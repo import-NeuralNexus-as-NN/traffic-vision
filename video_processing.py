@@ -98,6 +98,12 @@ def process_video(video_path, status_label):
                 x1, y1, x2, y2 = map(int, track.tlbr)
                 track_id = track.track_id
 
+                # Визуализация от ByteTrack'а
+                label = f"ID {track_id}"
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
+                            2)  # Текст
+
                 # Найдем детекцию, которая соответствует треку
                 best_match = None
                 for detection in detections:
@@ -121,10 +127,8 @@ def process_video(video_path, status_label):
                     # Сглаживаем скорость
                     smoothed_speed = speed_smoother.smooth(class_id, speed)
 
-                    # Прочие вычисления и отображение результатов
-                    # Подписываем ID трека
+                    # Подписываем ID трека и скорость
                     label = f"ID {track_id} | {speed:.1f} px/sec"
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                                 2)  # Текст
                     # Добавим информацию о треке в словарь
