@@ -17,7 +17,7 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 allowed_classes = {2, 3, 5}  # car, bus, truck
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
-speed_data = {"cars": [], "trucks": [], "frames": []}
+speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
 
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
@@ -66,6 +66,7 @@ def process_video(video_path, status_label):
         results = model(frame)
 
         total_speed_cars = []
+        total_speed_buses = []
         total_speed_trucks = []
         detections = []
 
@@ -122,17 +123,26 @@ def process_video(video_path, status_label):
                         continue  # Пропускаем объект, если он не в списке разрешенных классов
 
                     x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
-                    speed = calculate_speed(class_id, x_center, y_center, fps)
+                    speed = calculate_speed(track_id, x_center, y_center, fps)
 
                     # Сглаживаем скорость
-                    smoothed_speed = speed_smoother.smooth(class_id, speed)
+                    smoothed_speed = speed_smoother.smooth(track_id, speed)
 
                     # Подписываем ID трека и скорость
-                    label = f"ID {track_id} | {speed:.1f} px/sec"
+                    label = f"ID {track_id} | {smoothed_speed:.1f} px/sec"
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                                 2)  # Текст
+
                     # Добавим информацию о треке в словарь
                     track_info[track_id] = {'class_id': class_id, 'speed': smoothed_speed}
+
+                    # Добавляем скорость в статистику для классов
+                    if class_id == 2:  # car
+                        total_speed_cars.append(smoothed_speed)
+                    elif class_id == 3:  # bus
+                        total_speed_buses.append(smoothed_speed)
+                    elif class_id == 5:  # truck
+                        total_speed_trucks.append(smoothed_speed)
 
                 # Обновляем множества уникальных объектов для каждого класса
                 if class_id == 2:  # car
@@ -142,9 +152,6 @@ def process_video(video_path, status_label):
                 elif class_id == 5:  # truck
                     unique_trucks.add(track_id)
 
-                # Добавим информацию о треке в словарь
-                track_info[track_id] = {'class_id': class_id, 'speed': speed}
-
                 # Обновление статистики после подсчета уникальных объектов
                 statistics[2] = len(unique_cars)  # количество уникальных легковых автомобилей
                 statistics[3] = len(unique_buses)  # количество уникальных автобусов
@@ -152,8 +159,10 @@ def process_video(video_path, status_label):
 
         # Средняя скорость для графика
         avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0
+        avg_speed_buses = np.mean(total_speed_buses) if total_speed_buses else 0
         avg_speed_trucks = np.mean(total_speed_trucks) if total_speed_trucks else 0
         speed_data["cars"].append(avg_speed_cars)
+        speed_data["buses"].append(avg_speed_buses)
         speed_data["trucks"].append(avg_speed_trucks)
         speed_data["frames"].append(frame_count)
         frame_count += 1
