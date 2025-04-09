@@ -6,6 +6,7 @@ from statistics import save_statistics
 import numpy as np
 from speed_tracker import calculate_speed, SpeedSmoothing
 from tracker import tracker
+from flow_density import calculate_flow_density
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
@@ -156,6 +157,16 @@ def process_video(video_path, status_label):
                 statistics[2] = len(unique_cars)  # количество уникальных легковых автомобилей
                 statistics[3] = len(unique_buses)  # количество уникальных автобусов
                 statistics[5] = len(unique_trucks)  # количество уникальных грузовиков
+
+            # Расчет плотности потока
+            density = calculate_flow_density(tracks, width, height, scale_factor=1e6)
+
+            # Отображаем плотность потока на кадре
+            cv2.putText(frame, f"Flow Density: {density:.5f} objects per million pixels",
+                        (10, 30),  # Позиция текста (верхний левый угол)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8,  # Шрифт и размер текста
+                        (0, 255, 0),  # Цвет текста (зеленый)
+                        2)  # Толщина линии текста
 
         # Средняя скорость для графика
         avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0
