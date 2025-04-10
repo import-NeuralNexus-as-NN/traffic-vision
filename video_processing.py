@@ -20,6 +20,8 @@ statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь д�
 
 speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
 
+track_classes = {}  # track_id: class_id
+
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
 
@@ -100,50 +102,51 @@ def process_video(video_path, status_label):
                 x1, y1, x2, y2 = map(int, track.tlbr)
                 track_id = track.track_id
 
+                # Попробуем извлечь class_id, если он уже сохранён
+                class_id = track_classes.get(track_id)
+
                 # Визуализация от ByteTrack'а
                 label = f"ID {track_id}"
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                             2)  # Текст
 
-                # Найдем детекцию, которая соответствует треку
-                best_match = None
-                for detection in detections:
-                    detection_x1, detection_y1, detection_x2, detection_y2, _, detection_class_id = detection
-                    # Простое правило для нахождения соответствующей детекции:
-                    if detection_x1 <= x1 <= detection_x2 and detection_y1 <= y1 <= detection_y2:
-                        best_match = detection
-                        break
+                # Если не знаем class_id, попытаемся найти
+                if class_id is None:
+                    for detection in detections:
+                        detection_x1, detection_y1, detection_x2, detection_y2, _, detection_class_id = detection
+                        # Простое правило для нахождения соответствующей детекции:
+                        if detection_x1 <= x1 <= detection_x2 and detection_y1 <= y1 <= detection_y2:
+                            if detection_class_id in allowed_classes:
+                                class_id = detection_class_id
+                                track_classes[track_id] = class_id
+                            break
 
-                if best_match is not None:
-                    # Извлекаем class_id из детекции
-                    class_id = best_match[5]
+                # Фильтрация по классу (например, только легковые автомобили и грузовики)
+                if class_id not in allowed_classes:
+                    continue  # Пропускаем объект, если он не в списке разрешенных классов
 
-                    # Фильтрация по классу (например, только легковые автомобили и грузовики)
-                    if class_id not in allowed_classes:
-                        continue  # Пропускаем объект, если он не в списке разрешенных классов
+                x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
+                speed = calculate_speed(track_id, x_center, y_center, fps)
 
-                    x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
-                    speed = calculate_speed(track_id, x_center, y_center, fps)
+                # Сглаживаем скорость
+                smoothed_speed = speed_smoother.smooth(track_id, speed)
 
-                    # Сглаживаем скорость
-                    smoothed_speed = speed_smoother.smooth(track_id, speed)
+                # Подписываем ID трека и скорость
+                label = f"ID {track_id} | {smoothed_speed:.1f} px/sec"
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
+                            2)  # Текст
 
-                    # Подписываем ID трека и скорость
-                    label = f"ID {track_id} | {smoothed_speed:.1f} px/sec"
-                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
-                                2)  # Текст
+                # Добавим информацию о треке в словарь
+                track_info[track_id] = {'class_id': class_id, 'speed': smoothed_speed}
 
-                    # Добавим информацию о треке в словарь
-                    track_info[track_id] = {'class_id': class_id, 'speed': smoothed_speed}
-
-                    # Добавляем скорость в статистику для классов
-                    if class_id == 2:  # car
-                        total_speed_cars.append(smoothed_speed)
-                    elif class_id == 3:  # bus
-                        total_speed_buses.append(smoothed_speed)
-                    elif class_id == 5:  # truck
-                        total_speed_trucks.append(smoothed_speed)
+                # Добавляем скорость в статистику для классов
+                if class_id == 2:  # car
+                    total_speed_cars.append(smoothed_speed)
+                elif class_id == 3:  # bus
+                    total_speed_buses.append(smoothed_speed)
+                elif class_id == 5:  # truck
+                    total_speed_trucks.append(smoothed_speed)
 
                 # Обновляем множества уникальных объектов для каждого класса
                 if class_id == 2:  # car
