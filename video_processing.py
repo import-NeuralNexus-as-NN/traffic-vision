@@ -25,7 +25,7 @@ track_classes = {}  # track_id: class_id
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
 
-speed_smoother = SpeedSmoothing(window_size=5)
+speed_smoother = SpeedSmoothing()
 
 
 def process_video(video_path, status_label):
