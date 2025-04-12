@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy import stats
+import numpy as np
 
 # Устанавливаем шрифт для matplotlib, поддерживающий кириллицу
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
@@ -40,6 +42,23 @@ def save_statistics(statistics):
     plt.xlabel("Кадры")
     plt.ylabel("Скорость (пиксели/сек)")
     plt.title("Изменение скорости во времени")
+
+    # # Зависимость скорости от Координата Y (глубина кадра)
+    # # Расчет линейной регрессии для тренда
+    # slope, intercept, r_value, p_value, std_err = stats.linregress(speed_data["y_coords"], speed_data["cars"])
+    #
+    # plt.figure(figsize=(6, 4))
+    # plt.scatter(speed_data["y_coords"], speed_data["cars"], alpha=0.5, s=10, color='blue', label="Автомобили")
+    # plt.scatter(speed_data["y_coords"], speed_data["buses"], alpha=0.5, s=10, color='yellow', label="Автобусы")
+    # plt.scatter(speed_data["y_coords"], speed_data["trucks"], alpha=0.5, s=10, color='red', label="Грузовики")
+    # # Линия тренда
+    # plt.plot(speed_data["y_coords"], np.array(speed_data["y_coords"]) * slope + intercept, color='red', label=f"Тренд (r={r_value:.2f})",
+    #          linewidth=2)
+    #
+    # plt.xlabel("Координата Y в кадре (глубина кадра)")
+    # plt.ylabel("Скорость (пиксели/сек)")
+    # plt.title("Зависимость скорости от положения в кадре (перспектива)")
+
     plt.legend()
     plt.grid()
 

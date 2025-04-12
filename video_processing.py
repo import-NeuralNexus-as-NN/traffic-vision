@@ -18,7 +18,7 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 allowed_classes = {2, 3, 5}  # car, bus, truck
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
-speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
+speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "y_coords": [],  "all_speeds": []}
 
 track_classes = {}  # track_id: class_id
 
@@ -38,7 +38,7 @@ def process_video(video_path, status_label):
     global speed_data, statistics, track_classes, speed_smoother
 
     # Обновляем переменные
-    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
+    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "y_coords": [],  "all_speeds": []}
     statistics = {class_id: 0 for class_id in allowed_classes}
     track_classes = {}
     speed_smoother = SpeedSmoothing()
@@ -194,6 +194,7 @@ def process_video(video_path, status_label):
         speed_data["cars"].append(avg_speed_cars)
         speed_data["buses"].append(avg_speed_buses)
         speed_data["trucks"].append(avg_speed_trucks)
+        speed_data["y_coords"].append(y_center)  # Сохраняем координаты Y
         speed_data["frames"].append(frame_count)
         frame_count += 1
 
