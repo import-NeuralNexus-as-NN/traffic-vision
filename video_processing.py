@@ -22,6 +22,12 @@ speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
 
 track_classes = {}  # track_id: class_id
 
+class_names = {
+    2: "car",
+    3: "bus",
+    5: "truck"
+}
+
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
 
@@ -105,8 +111,10 @@ def process_video(video_path, status_label):
                 # Попробуем извлечь class_id, если он уже сохранён
                 class_id = track_classes.get(track_id)
 
+                class_name = class_names.get(class_id, "unknown")
+
                 # Визуализация от ByteTrack'а
-                label = f"ID {track_id}"
+                label = f"ID {track_id} | {class_name}"
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Bounding box
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                             2)  # Текст
@@ -133,7 +141,7 @@ def process_video(video_path, status_label):
                 smoothed_speed = speed_smoother.smooth(track_id, speed)
 
                 # Подписываем ID трека и скорость
-                label = f"ID {track_id} | {smoothed_speed:.1f} px/sec"
+                label = f"ID {track_id} | {class_name} | {smoothed_speed:.1f} px/sec"
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),
                             2)  # Текст
 
