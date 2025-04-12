@@ -35,6 +35,14 @@ speed_smoother = SpeedSmoothing()
 
 
 def process_video(video_path, status_label):
+    global speed_data, statistics, track_classes, speed_smoother
+
+    # Обновляем переменные
+    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
+    statistics = {class_id: 0 for class_id in allowed_classes}
+    track_classes = {}
+    speed_smoother = SpeedSmoothing()
+
     if not video_path:
         status_label.configure(text="Сначала выберите видео!", text_color="red")
         return
