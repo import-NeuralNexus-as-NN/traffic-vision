@@ -7,6 +7,7 @@ import numpy as np
 from speed_tracker import calculate_speed, SpeedSmoothing
 from tracker import tracker
 from flow_density import calculate_flow_density
+from visual_utils import draw_text_with_background
 
 # Отключаем вывод логов
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
@@ -18,7 +19,7 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 allowed_classes = {2, 3, 5}  # car, bus, truck
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
-speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "y_coords": [],  "all_speeds": []}
+speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
 
 track_classes = {}  # track_id: class_id
 
@@ -38,7 +39,7 @@ def process_video(video_path, status_label):
     global speed_data, statistics, track_classes, speed_smoother
 
     # Обновляем переменные
-    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "y_coords": [],  "all_speeds": []}
+    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
     statistics = {class_id: 0 for class_id in allowed_classes}
     track_classes = {}
     speed_smoother = SpeedSmoothing()
@@ -68,6 +69,10 @@ def process_video(video_path, status_label):
 
     # Переменные для графика
     frame_count = 0
+
+    # Для оценки загруженности по количеству уникальных объектов за последние 5 секунд
+    window_size = fps * 5  # Количество кадров в 5-секундном окне
+    track_id_window = []
 
     # Множества для отслеживания уникальных объектов по track_id
     unique_cars = set()
@@ -110,6 +115,36 @@ def process_video(video_path, status_label):
 
             # Создадим словарь для отслеживания классов и объектов
             track_info = {}
+
+            # Добавляем текущие track_id в скользящее окно
+            current_ids = [track.track_id for track in tracks]
+            track_id_window.extend(current_ids)
+
+            # Ограничиваем размер окна
+            if len(track_id_window) > window_size:
+                track_id_window = track_id_window[-window_size:]
+
+            # Подсчет уникальных объектов в окне
+            unique_objects_last_5_sec = len(set(track_id_window))
+
+            # Пороговые значения (можно настроить)
+            LOW_THRESHOLD = 10
+            HIGH_THRESHOLD = 30
+
+            if unique_objects_last_5_sec < LOW_THRESHOLD:
+                congestion_level = "Low"
+                color = (0, 255, 0)
+            elif unique_objects_last_5_sec < HIGH_THRESHOLD:
+                congestion_level = "Average"
+                color = (0, 255, 255)
+            else:
+                congestion_level = "High"
+                color = (0, 0, 255)
+
+            # Визуализация загруженности
+            draw_text_with_background(frame, f"Congestion level: {congestion_level}", (10, 60), bg_color=color)
+            draw_text_with_background(frame, f"Objects for 5 sec: {unique_objects_last_5_sec}", (10, 100),
+                                      bg_color=(50, 50, 50))
 
             for track in tracks:
                 # Получаем координаты трека
@@ -180,12 +215,12 @@ def process_video(video_path, status_label):
             # Расчет плотности потока
             density = calculate_flow_density(tracks, width, height, scale_factor=1e6)
 
-            # Отображаем плотность потока на кадре
-            cv2.putText(frame, f"Flow Density: {density:.5f} objects per million pixels",
-                        (10, 30),  # Позиция текста (верхний левый угол)
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8,  # Шрифт и размер текста
-                        (0, 255, 0),  # Цвет текста (зеленый)
-                        2)  # Толщина линии текста
+            # # Отображаем плотность потока на кадре
+            # cv2.putText(frame, f"Flow Density: {density:.5f} objects per million pixels",
+            #             (10, 30),  # Позиция текста (верхний левый угол)
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.8,  # Шрифт и размер текста
+            #             (0, 255, 0),  # Цвет текста (зеленый)
+            #             2)  # Толщина линии текста
 
         # Средняя скорость для графика
         avg_speed_cars = np.mean(total_speed_cars) if total_speed_cars else 0
@@ -194,7 +229,7 @@ def process_video(video_path, status_label):
         speed_data["cars"].append(avg_speed_cars)
         speed_data["buses"].append(avg_speed_buses)
         speed_data["trucks"].append(avg_speed_trucks)
-        speed_data["y_coords"].append(y_center)  # Сохраняем координаты Y
+        # speed_data["y_coords"].append(y_center)  # Сохраняем координаты Y
         speed_data["frames"].append(frame_count)
         frame_count += 1
 
