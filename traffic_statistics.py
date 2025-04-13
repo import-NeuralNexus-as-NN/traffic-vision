@@ -35,12 +35,12 @@ def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, 
     ax1.set_title("Количество транспортных средств по типам")
     ax1.set_ylabel("Количество")
 
-    # 2. График скорости автомобилей, автобусов и грузовиков
+    # 2. Средняя скорость транспорта по классам
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(speed_data["frames"], speed_data["cars"], label="Автомобили", color="blue")
     ax2.plot(speed_data["frames"], speed_data["buses"], label="Автобусы", color="orange")
     ax2.plot(speed_data["frames"], speed_data["trucks"], label="Грузовики", color="green")
-    ax2.set_title("Изменение скорости по кадрам")
+    ax2.set_title("Средняя скорость транспорта по классам")
     ax2.set_xlabel("Кадры")
     ax2.set_ylabel("Скорость (пиксели/сек)")
     ax2.legend()
@@ -61,8 +61,23 @@ def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, 
     # plt.ylabel("Скорость (пиксели/сек)")
     # plt.title("Зависимость скорости от положения в кадре (перспектива)")
 
-    # 3. Тепловая карта плотности по кадру
+    # 3. Плотность потока во времени с порогами
+    ax3 = fig.add_subplot(gs[1, :])
+    ax3.plot(flow_density_data["frames"], flow_density_data["density"], color='black', linewidth=2,
+             label="Плотность потока")
+    ax3.axhspan(0, LOW_THRESHOLD, facecolor='green', alpha=0.2, label='Низкая загруженность')
+    ax3.axhspan(LOW_THRESHOLD, HIGH_THRESHOLD, facecolor='yellow', alpha=0.2, label='Средняя загруженность')
+    ax3.axhspan(HIGH_THRESHOLD, max(flow_density_data["density"]) + 5, facecolor='red', alpha=0.2,
+                label='Высокая загруженность')
+    ax3.set_xlabel("Кадры")
+    ax3.set_ylabel("Плотность потока\n(Объекты за 5 секунд)")
+    ax3.set_title("Изменение плотности потока во времени")
+    ax3.legend(loc='upper left')
+    ax3.grid(True)
 
+    plt.savefig("combined_stats_graph.png", dpi=300)
+
+    # 4. Тепловая карта плотности по кадру
     # Обратите внимание: y сначала, потом x, чтобы совпало с изображением
     heatmap, yedges, xedges = np.histogram2d(
         [p[1] for p in heatmap_points],  # y
@@ -82,8 +97,9 @@ def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, 
     ax.set_title("Тепловая карта плотности транспорта")
     plt.xlabel("Ширина кадра")
     plt.ylabel("Высота кадра")
+    plt.savefig("heatmap_density.png", dpi=300)
 
-    # 4. Распределение скоростей по типам транспорта
+    # 5. Распределение скоростей по типам транспорта
     df = pd.DataFrame({
         "Скорость": speed_data["cars"] + speed_data["buses"] + speed_data["trucks"],
         "Тип": ["Автомобили"] * len(speed_data["cars"]) +
@@ -96,25 +112,7 @@ def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, 
     plt.title("Распределение скоростей по типам транспорта")
     plt.ylabel("Скорость (пиксели/сек)")
     plt.grid()
+    plt.savefig("speed_distribution_boxplot.png", dpi=300)
 
-    # 5. Динамика изменения плотности транспортного потока во времени с порогами
-    plt.figure(figsize=(10, 5))
-
-    # Линия плотности
-    plt.plot(flow_density_data["frames"], flow_density_data["density"], color='black', linewidth=2,
-             label="Плотность потока")
-
-    # Зоны загруженности
-    plt.axhspan(0, LOW_THRESHOLD, facecolor='green', alpha=0.2, label='Низкая загруженность')
-    plt.axhspan(LOW_THRESHOLD, HIGH_THRESHOLD, facecolor='yellow', alpha=0.2, label='Средняя загруженность')
-    plt.axhspan(HIGH_THRESHOLD, max(flow_density_data["density"]) + 5, facecolor='red', alpha=0.2,
-                label='Высокая загруженность')
-
-    # Подписи и оформление
-    plt.xlabel("Кадры")
-    plt.ylabel("Плотность потока\n(Количество объектов за 5 секунд)")
-    plt.title("Изменение плотности потока во времени")
-    plt.legend(loc='upper left')
-    plt.grid(True)
     plt.tight_layout()
     plt.show()
