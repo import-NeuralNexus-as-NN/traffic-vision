@@ -2,7 +2,7 @@ import cv2
 from ultralytics import YOLO
 import logging
 import os
-from statistics import save_statistics
+from traffic_statistics import save_statistics
 import numpy as np
 from speed_tracker import calculate_speed, SpeedSmoothing
 from tracker import tracker
@@ -29,6 +29,9 @@ class_names = {
     5: "truck"
 }
 
+# Глобальный список координат центров bbox
+heatmap_points = []  # [(x1, y1), (x2, y2), ...]
+
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
 
@@ -36,13 +39,14 @@ speed_smoother = SpeedSmoothing()
 
 
 def process_video(video_path, status_label):
-    global speed_data, statistics, track_classes, speed_smoother
+    global speed_data, statistics, track_classes, speed_smoother, heatmap_points
 
     # Обновляем переменные
     speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
     statistics = {class_id: 0 for class_id in allowed_classes}
     track_classes = {}
     speed_smoother = SpeedSmoothing()
+    heatmap_points.clear()
 
     if not video_path:
         status_label.configure(text="Сначала выберите видео!", text_color="red")
@@ -61,6 +65,8 @@ def process_video(video_path, status_label):
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    frame_shape = (height, width)
 
     # Определяем путь сохранения
     output_path = os.path.splitext(video_path)[0] + "_processed.avi"
@@ -178,6 +184,10 @@ def process_video(video_path, status_label):
                     continue  # Пропускаем объект, если он не в списке разрешенных классов
 
                 x_center, y_center = (x1 + x2) // 2, (y1 + y2) // 2
+
+                # Сохраняем координаты
+                heatmap_points.append((x_center, y_center))
+
                 speed = calculate_speed(track_id, x_center, y_center, fps)
 
                 # Сглаживаем скорость
@@ -247,6 +257,6 @@ def process_video(video_path, status_label):
     cv2.destroyAllWindows()
 
     # Сохранение статистики
-    save_statistics(statistics)
+    save_statistics(statistics, heatmap_points, frame_shape)
 
     status_label.configure(text=f"Готово!Видео сохранено: {output_path}", text_color="green")
