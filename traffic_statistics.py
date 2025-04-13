@@ -4,6 +4,7 @@ from scipy import stats
 import numpy as np
 import seaborn as sns
 import cv2
+import pandas as pd
 
 # Устанавливаем шрифт для matplotlib, поддерживающий кириллицу
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
@@ -81,6 +82,20 @@ def save_statistics(statistics, heatmap_points, frame_shape):
     ax.set_title("Тепловая карта плотности транспорта")
     plt.xlabel("Ширина кадра")
     plt.ylabel("Высота кадра")
+
+    # 4. Распределение скоростей по типам транспорта
+    df = pd.DataFrame({
+        "Скорость": speed_data["cars"] + speed_data["buses"] + speed_data["trucks"],
+        "Тип": ["Автомобили"] * len(speed_data["cars"]) +
+               ["Автобусы"] * len(speed_data["buses"]) +
+               ["Грузовики"] * len(speed_data["trucks"])
+    })
+
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x="Тип", y="Скорость", data=df, palette="Set2")
+    plt.title("Распределение скоростей по типам транспорта")
+    plt.ylabel("Скорость (пиксели/сек)")
+    plt.grid()
 
     plt.tight_layout()
     plt.show()
