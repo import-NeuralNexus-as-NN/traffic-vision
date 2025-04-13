@@ -2,8 +2,6 @@ from tkinter import filedialog
 import threading
 import gui
 from video_processing import process_video
-from speed_tracker import calculate_speed
-from traffic_statistics import save_statistics
 
 
 def select_video(status_label):

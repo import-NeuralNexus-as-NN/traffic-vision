@@ -12,8 +12,8 @@ class SpeedSmoothing:
         self.threshold = threshold  # Порог, при котором будет увеличиваться окно
         self.speeds = {}  # Словарь для хранения скоростей по объектам
 
+    # Добавляем новую скорость и возвращаем сглаженную скорость
     def smooth(self, object_id, new_speed):
-        """Добавляем новую скорость и возвращаем сглаженную скорость."""
         if object_id not in self.speeds:
             self.speeds[object_id] = []
 

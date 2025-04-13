@@ -19,7 +19,7 @@ model = YOLO("yolov8s.pt")  # Выбираем YOLOv8s (быстрая и точ
 allowed_classes = {2, 3, 5}  # car, bus, truck
 statistics = {class_id: 0 for class_id in allowed_classes}  # Словарь для хранения статистики
 
-speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
+speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
 
 track_classes = {}  # track_id: class_id
 
@@ -33,7 +33,7 @@ class_names = {
 heatmap_points = []  # [(x1, y1), (x2, y2), ...]
 
 # Порог уверенности
-confidence_threshold = 0.5  # Установите нужный порог
+confidence_threshold = 0.5
 
 # Пороговые значения (можно настроить)
 LOW_THRESHOLD = 10
@@ -49,7 +49,7 @@ def process_video(video_path, status_label):
     flow_density_data = {"frames": [], "density": []}
 
     # Обновляем переменные
-    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
+    speed_data = {"cars": [], "buses": [], "trucks": [], "frames": []}
     statistics = {class_id: 0 for class_id in allowed_classes}
     track_classes = {}
     speed_smoother = SpeedSmoothing()
@@ -59,7 +59,7 @@ def process_video(video_path, status_label):
         status_label.configure(text="Сначала выберите видео!", text_color="red")
         return
 
-        # Открытие видеопотока
+    # Открытие видеопотока
     cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():
@@ -186,7 +186,7 @@ def process_video(video_path, status_label):
                                 track_classes[track_id] = class_id
                             break
 
-                # Фильтрация по классу (например, только легковые автомобили и грузовики)
+                # Фильтрация по классу
                 if class_id not in allowed_classes:
                     continue  # Пропускаем объект, если он не в списке разрешенных классов
 
@@ -209,19 +209,15 @@ def process_video(video_path, status_label):
                 track_info[track_id] = {'class_id': class_id, 'speed': smoothed_speed}
 
                 # Добавляем скорость в статистику для классов
+                # и обновляем множества уникальных объектов для каждого класса
                 if class_id == 2:  # car
                     total_speed_cars.append(smoothed_speed)
-                elif class_id == 3:  # bus
-                    total_speed_buses.append(smoothed_speed)
-                elif class_id == 5:  # truck
-                    total_speed_trucks.append(smoothed_speed)
-
-                # Обновляем множества уникальных объектов для каждого класса
-                if class_id == 2:  # car
                     unique_cars.add(track_id)
                 elif class_id == 3:  # bus
+                    total_speed_buses.append(smoothed_speed)
                     unique_buses.add(track_id)
                 elif class_id == 5:  # truck
+                    total_speed_trucks.append(smoothed_speed)
                     unique_trucks.add(track_id)
 
                 # Обновление статистики после подсчета уникальных объектов
@@ -229,8 +225,8 @@ def process_video(video_path, status_label):
                 statistics[3] = len(unique_buses)  # количество уникальных автобусов
                 statistics[5] = len(unique_trucks)  # количество уникальных грузовиков
 
-            # Расчет плотности потока
-            density = calculate_flow_density(tracks, width, height, scale_factor=1e6)
+            # # Расчет плотности потока
+            # density = calculate_flow_density(tracks, width, height, scale_factor=1e6)
 
             # # Отображаем плотность потока на кадре
             # cv2.putText(frame, f"Flow Density: {density:.5f} objects per million pixels",

@@ -3,7 +3,6 @@ import matplotlib
 from scipy import stats
 import numpy as np
 import seaborn as sns
-import cv2
 import pandas as pd
 
 # Устанавливаем шрифт для matplotlib, поддерживающий кириллицу
@@ -78,7 +77,6 @@ def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, 
     plt.savefig("combined_stats_graph.png", dpi=300)
 
     # 4. Тепловая карта плотности по кадру
-    # Обратите внимание: y сначала, потом x, чтобы совпало с изображением
     heatmap, yedges, xedges = np.histogram2d(
         [p[1] for p in heatmap_points],  # y
         [p[0] for p in heatmap_points],  # x
