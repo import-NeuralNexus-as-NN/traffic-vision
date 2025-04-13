@@ -35,11 +35,18 @@ heatmap_points = []  # [(x1, y1), (x2, y2), ...]
 # Порог уверенности
 confidence_threshold = 0.5  # Установите нужный порог
 
+# Пороговые значения (можно настроить)
+LOW_THRESHOLD = 10
+HIGH_THRESHOLD = 30
+
 speed_smoother = SpeedSmoothing()
 
 
 def process_video(video_path, status_label):
-    global speed_data, statistics, track_classes, speed_smoother, heatmap_points
+    global speed_data, statistics, track_classes, speed_smoother, heatmap_points, flow_density_data
+
+    # Инициализация данных для плотности
+    flow_density_data = {"frames": [], "density": []}
 
     # Обновляем переменные
     speed_data = {"cars": [], "buses": [], "trucks": [], "frames": [], "all_speeds": []}
@@ -133,9 +140,9 @@ def process_video(video_path, status_label):
             # Подсчет уникальных объектов в окне
             unique_objects_last_5_sec = len(set(track_id_window))
 
-            # Пороговые значения (можно настроить)
-            LOW_THRESHOLD = 10
-            HIGH_THRESHOLD = 30
+            # Сохраняем данные о плотности
+            flow_density_data["frames"].append(frame_count)
+            flow_density_data["density"].append(unique_objects_last_5_sec)
 
             if unique_objects_last_5_sec < LOW_THRESHOLD:
                 congestion_level = "Low"
@@ -257,6 +264,6 @@ def process_video(video_path, status_label):
     cv2.destroyAllWindows()
 
     # Сохранение статистики
-    save_statistics(statistics, heatmap_points, frame_shape)
+    save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, LOW_THRESHOLD, HIGH_THRESHOLD)
 
     status_label.configure(text=f"Готово!Видео сохранено: {output_path}", text_color="green")

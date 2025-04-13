@@ -18,7 +18,7 @@ class_names = {
 }
 
 
-def save_statistics(statistics, heatmap_points, frame_shape):
+def save_statistics(statistics, heatmap_points, frame_shape, flow_density_data, LOW_THRESHOLD, HIGH_THRESHOLD):
     from video_processing import speed_data
     # Сохранение статистики в файл
     with open("statistics.txt", "w", encoding="utf-8") as file:
@@ -97,5 +97,24 @@ def save_statistics(statistics, heatmap_points, frame_shape):
     plt.ylabel("Скорость (пиксели/сек)")
     plt.grid()
 
+    # 5. Динамика изменения плотности транспортного потока во времени с порогами
+    plt.figure(figsize=(10, 5))
+
+    # Линия плотности
+    plt.plot(flow_density_data["frames"], flow_density_data["density"], color='black', linewidth=2,
+             label="Плотность потока")
+
+    # Зоны загруженности
+    plt.axhspan(0, LOW_THRESHOLD, facecolor='green', alpha=0.2, label='Низкая загруженность')
+    plt.axhspan(LOW_THRESHOLD, HIGH_THRESHOLD, facecolor='yellow', alpha=0.2, label='Средняя загруженность')
+    plt.axhspan(HIGH_THRESHOLD, max(flow_density_data["density"]) + 5, facecolor='red', alpha=0.2,
+                label='Высокая загруженность')
+
+    # Подписи и оформление
+    plt.xlabel("Кадры")
+    plt.ylabel("Плотность потока\n(Количество объектов за 5 секунд)")
+    plt.title("Изменение плотности потока во времени")
+    plt.legend(loc='upper left')
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
